@@ -255,7 +255,7 @@ var Obbi = function() {
     //basically draws a vector from the point towards anywhere; if the vector crosses the polygon an even number of times, the point has to be outside. if it crosses once, the point is inside.
     
     //how close the point has to be to the segment to count as a collision
-    const EPSILON = 0.05;
+    const EPSILON = 0.1;
     //this fxn determines if a given point is within a polygon
     function isItIn(polygonPoints, testPoint, directionPoint) {
         // goes from testPoint in the direction opposite from directionPoint
@@ -268,20 +268,21 @@ var Obbi = function() {
         var intersects = 0;
 
         //iterate through each polygon point to form a segment (each side of the polygon)
-        for (var i = 0; i < polygonPoints.length; i++) {
+        for (var i = 0; i < polygonPoints.length; i++) { //FIX THESE SEGMENTS' CORNERS
             var segment;
             if (i == polygonPoints.length - 1) {
                 segment = [polygonPoints[i], polygonPoints[0]];
             } else {
                 segment = [polygonPoints[i], polygonPoints[i + 1]];
             }
+            segment = shortenSegment(segment, 2 * EPSILON);
             intersects += doesItIntersect(segment, startPoint, delta);
+            console.log(intersects);
         }
         return (intersects % 2 == 0) ? false : true;
     }
-
     //vector overlapping checking
-    function doesItIntersect(segment, startPoint, delta) { // return 0 or 1
+    /* function doesItIntersect(segment, startPoint, delta) { // return 0 or 1
         var lowY = Math.min(segment[0][1], segment[1][1]);
         var highY = Math.max(segment[0][1], segment[1][1]);
         var lowX = Math.min(segment[0][0], segment[1][0]);
@@ -292,24 +293,55 @@ var Obbi = function() {
         var point = [startPoint[0], startPoint[1]];
         while (true) {
             if (delta[1] < 0) {
-                if (point[1] < lowY - EPSILON) break;
+                if (point[1] < lowY - 2 * EPSILON) break;
             } else if (delta[1] > 0) {
-                if (point[1] > highY + EPSILON) break;
-            } else {
-                if (delta[0] < 0) {
-                    if (point[0] < lowX) break;
-                } else if (delta[0] > 0) {
-                    if (point[0] > highX) break;
-                } else {
-                    alert("we're screwed. i'm so sorry, user");
-                }
+                if (point[1] > highY + 2 * EPSILON) break;
+            }
+            if (delta[0] < 0) {
+                if (point[0] < lowX - 2 * EPSILON) break;
+            } else if (delta[0] > 0) {
+                if (point[0] > highX + 2 * EPSILON) break;
             }
             var distance = Math.abs(A * point[0] + B * point[1] + C) / (A * A + B * B) ** 0.5;
             if (distance <= EPSILON) return 1;
             point[0] += delta[0];
             point[1] += delta[1];
+            console.log(point[0] + " " + point[1]);
         }
         return 0;
+    } */
+    function doesItIntersect(segment, startPoint, delta) {
+        var lowY = Math.min(segment[0][1], segment[1][1]);
+        var highY = Math.max(segment[0][1], segment[1][1]);
+        var lowX = Math.min(segment[0][0], segment[1][0]);
+        var highX = Math.max(segment[0][0], segment[1][0]);
+        var A1 = segment[0][1] - segment[1][1]; //y1 - y2
+        var B1 = segment[1][0] - segment[0][0]; //x2 - x1
+        //x1 * (y2 - y1) + y1 * (x2 - x1)
+        var C1 = segment[0][0] * (segment[1][1] - segment[0][1]) + segment[0][1] * (segment[1][0] - segment[0][0]);
+        var A2 = delta[1] / delta[0]; // dy / dx
+        var B2 = -1;
+        var C2 = startPoint[0] - delta[1] / delta[0] * startPoint[1]; //m - dy / dx * n
+        var X = (B1 * C2 - B2 * C1) / (A1 * B2 - A2 * B1);
+        var Y = (C1 * A2 - C2 * A1) / (A1 * B2 - A2 * B1);
+        if ((X - startPoint[0]) / delta[0] <= 0 && (Y - startPoint[1]) / delta[1] <= 0) {
+            if (lowY != highY) {
+                if (Y < lowY || Y < highY) return 0;
+                return 1;
+            } else if (lowX != highX) {
+                if (X < lowX || X > highX) return 0;
+                return 1;
+            }
+        }
+        return 0; // can't intersect a point lol
+    }
+    //helper function to shorten a segment by length
+    function shortenSegment(segment, length) {
+        var magnitude = ((segment[1][0] - segment[0][0]) ** 2 + (segment[1][1] - segment[0][1]) ** 2) ** 0.5;
+        var delta = [(segment[1][0] - segment[0][0]) * (magnitude - length) / magnitude,
+                     (segment[1][1] - segment[0][1]) * (magnitude - length) / magnitude];
+        return [[segment[0][0], segment[0][1]],
+                [segment[0][0] + delta[0], segment[0][1] + delta[1]]];
     }
     
     // TEST CASES
